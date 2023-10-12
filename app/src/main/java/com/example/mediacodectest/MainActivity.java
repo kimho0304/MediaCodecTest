@@ -1,24 +1,23 @@
 package com.example.mediacodectest;
 
-import static androidx.documentfile.provider.DocumentFile.fromSingleUri;
-
 import android.app.Activity;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.provider.OpenableColumns;
 import android.util.Log;
 import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.documentfile.provider.DocumentFile;
+
+import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = MainActivity.class.getSimpleName();
     public Uri selectedFile;
+    public File file;
     private static final int REQ_CODE = 123; // startActivityForResult에 쓰일 사용자 정의 요청 코드
 
     // UI variables definition ↓
@@ -44,16 +43,16 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == REQ_CODE && resultCode == Activity.RESULT_OK) { // 요청 코드가 사용자가 정의한 값이랑 동일하고, 결과가 OK 상태(정상적)인 경우:
             if (data != null) { // 전달 받은 값(파일 탐색기에서 선택한 파일)이 존재할 경우:
                 selectedFile = data.getData(); // URI 객체인 selectedFile에 그 값을 할당.
-                String filename = queryName(getContentResolver(), selectedFile);
-                Log.i("videocrypto_filename", filename);
 
-                DocumentFile fileName = fromSingleUri(this, selectedFile); // URI 객체인 selectedFile을 새로운 DocumentFile형 객체에 할당. URI 객체의 경우 파일의 원본 정보가 아닌 새로 래핑된 정보만 제공하므로,
+                // URI 객체인 selectedFile을 새로운 DocumentFile형 객체에 할당. URI 객체의 경우 파일의 원본 정보가 아닌 새로 래핑된 정보만 제공하므로,
+                // 원본 정보를 볼 수 있는 DocumentFile 객체에 새로 할당한다.
+
             }
         }
 
-        Intent toDecodeThread = new Intent(this, DecodingActivity.class);
-        toDecodeThread.putExtra("file", selectedFile);
-        startActivity(toDecodeThread);
+        Intent toDecodeActivity = new Intent(this, DecodingActivity.class);
+        toDecodeActivity.putExtra("file", selectedFile);
+        startActivity(toDecodeActivity);
     }
 
     // https://stackoverflow.com/questions/45589736/uri-file-size-is-always-0
@@ -79,17 +78,5 @@ public class MainActivity extends AppCompatActivity {
         intent.setType("*/*"); //파일 형식 지정: *은 모든 타입을 의미
 
         startActivityForResult(intent, REQ_CODE); //위의 intent를 통해 파일 탐색 액티비티 실행.
-    }
-
-    private String queryName(ContentResolver resolver, Uri uri) { // https://stackoverflow.com/a/38304115
-        Cursor returnCursor = resolver.query(uri, null, null, null, null);
-        assert returnCursor != null;
-        int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-        returnCursor.moveToFirst();
-        String name = returnCursor.getString(nameIndex);
-        returnCursor.close();
-
-        String[] result = name.split("\\."); // '.'을 기준으로 확장명 분리 ex) ".txt"
-        return result[0];
     }
 }
