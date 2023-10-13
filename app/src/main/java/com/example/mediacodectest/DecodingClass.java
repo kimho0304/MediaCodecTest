@@ -263,6 +263,11 @@ public class DecodingClass extends Activity {
                 extractor.release();
                 extractor = null;
             }
+            if (encoder != null) {
+                encoder.stop();
+                encoder.release();
+                encoder = null;
+            }
         }
     }
 

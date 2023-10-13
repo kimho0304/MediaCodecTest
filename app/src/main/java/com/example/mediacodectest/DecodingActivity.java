@@ -59,6 +59,7 @@ public class DecodingActivity extends AppCompatActivity {
             Log.e(TAG, "Allocation DecodingClass object is failed.");
             e.printStackTrace();
         }
+
         DecodingClass.PlayerFeedback feedback = null;
         DecodingClass.PlayTask decodeThread = new DecodingClass.PlayTask(decodeObj, feedback);
 
@@ -66,10 +67,6 @@ public class DecodingActivity extends AppCompatActivity {
             Thread thread = new Thread(decodeThread);
             thread.start();
         });
-    }
-
-    private void setFormat(File videoFile){
-
     }
 
     // https://stackoverflow.com/questions/65447194/how-to-convert-uri-to-file-android-10
