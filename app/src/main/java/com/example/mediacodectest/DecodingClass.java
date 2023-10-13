@@ -2,6 +2,7 @@ package com.example.mediacodectest;
 
 import android.app.Activity;
 import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Handler;
@@ -163,14 +164,15 @@ public class DecodingClass extends Activity {
         nearestToFurthest.add(new Size(1280, 720));
         nearestToFurthest.add(new Size(1920, 1080));
 
-        Collections.sort(nearestToFurthest, (o1, o2) -> {
+       /* Collections.sort(nearestToFurthest, (o1, o2) -> {
             if (o1.getWidth() * o1.getHeight() == o2.getWidth() * o2.getWidth())
                 return 1;
             else {
                 boolean aspect;
+
             }
             return 0;
-        });
+        });*/
 
         Size result = null;
         if (isSizeSupported(mediaCodec, mime, nearestToFurthest.get(0)))
@@ -207,14 +209,44 @@ public class DecodingClass extends Activity {
 
             // Format 초기화.
             MediaFormat format = extractor.getTrackFormat(trackIndex);
-
-            Size inputSize = new Size(format.getInteger(MediaFormat.KEY_WIDTH), format.getInteger(MediaFormat.KEY_HEIGHT));
-            Size outputSize = getSupportedVideoSize(encoder, "video/avc", inputSize);
+            MediaFormat outFormat = extractor.getTrackFormat(trackIndex);
 
             // Create a MediaCodec decoder, and configure it with the MediaFormat from the
             // extractor.  It's very important to use the format from the extractor because
             // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
             String mime = format.getString(MediaFormat.KEY_MIME);
+
+            Size inputSize = new Size(format.getInteger(MediaFormat.KEY_WIDTH), format.getInteger(MediaFormat.KEY_HEIGHT));
+            Size outputSize = getSupportedVideoSize(encoder, mime, inputSize);
+
+            try {
+                outFormat = MediaFormat.createVideoFormat(mime, outputSize.getWidth(), outputSize.getHeight());
+                outFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+                outFormat.setInteger(MediaFormat.KEY_BIT_RATE, 20000000);
+                outFormat.setInteger(MediaFormat.KEY_FRAME_RATE, format.getInteger(MediaFormat.KEY_FRAME_RATE));
+                outFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 0);
+                outFormat.setString(MediaFormat.KEY_MIME, mime);
+
+                // encoder 객체에 outFormat를 설정.
+                // surface와 crypto의 역할은 다음과 같다.
+                // surface: 해당 Decoder에 대해 결과물을 출력할 android.view.Surface 객체. 만일 해당 MediaCodec가 raw video output를 출력하지 않거나 (Decoder가 아니거나) ByteBuffer로 아웃풋을 내고 싶을 경우에는 null 로 선언한다.
+                // crypto: DRM 등 MediaCrypto가 걸린 영상을 Decode/Encode하려고 할 때 선언하는 adnroid.media.MediaCrypto 객체.
+                // 여기서는 Encoder 객체이므로 surface, crypto 둘 다 null를 주고, flags로는 CONFIGURE_FLAG_ENCODE 로 해당 MediaCodec 객체가 Encoder로서 활용할 것임을 선언한다.
+                encoder.configure(outFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            } catch(MediaCodec.CodecException e) {
+                e.printStackTrace();
+                // MediaCodec.configure 가 실패할 수 있는 경우
+                // IllegalArgumentException -> surface 가 이미 릴리즈 되었거나, Format가 기기에서 지원하지 않는 경우. 또는 플래그가 잘못 설정된 경우
+                // IllegalStateException -> 초기화되지 않은 상태가 아닐 경우
+                // CryptoException -> DRM 관련 에러
+                // CodecException -> Codec 관련 에러
+
+                // 일부 기기의 경우, i-frame-interval 가 0 이 아닌 -1 이 '키 프레임' 을 나타내는 경우가 있다.
+                // 따라서, -1로 OutputFormat 를 생성하고 다시 configure를 시도한다.
+                outFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, -1);
+                encoder.configure(outFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            }
+
             decoder = MediaCodec.createDecoderByType(mime);
             decoder.configure(format, mOutputSurface, null, 0);
             decoder.start();
