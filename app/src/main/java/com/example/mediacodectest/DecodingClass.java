@@ -7,12 +7,16 @@ import android.media.MediaFormat;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.util.Size;
 import android.view.Surface;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class DecodingClass extends Activity {
     private static final String TAG = DecodingClass.class.getSimpleName();
@@ -47,6 +51,7 @@ public class DecodingClass extends Activity {
     public interface FrameCallback {
         /**
          * Called immediately before the frame is rendered.
+         *
          * @param presentationTimeUsec The desired presentation time, in microseconds.
          */
         void preRender(long presentationTimeUsec);
@@ -69,7 +74,7 @@ public class DecodingClass extends Activity {
     /**
      * Constructs a MoviePlayer.
      *
-     * @param sourceFile The video file to open.
+     * @param sourceFile    The video file to open.
      * @param outputSurface The Surface where frames will be sent.
      * @param frameCallback Callback object, used to pace output.
      * @throws IOException
@@ -137,6 +142,43 @@ public class DecodingClass extends Activity {
         mIsStopRequested = true;
     }
 
+    private Boolean isSizeSupported(MediaCodec mediaCodec, String mime, Size size) {
+        return mediaCodec.getCodecInfo().getCapabilitiesForType(mime).getVideoCapabilities().isSizeSupported(size.getWidth(), size.getHeight());
+    }
+
+    public Size getSupportedVideoSize(MediaCodec mediaCodec, String mime, Size preferredResolution) {
+        // 주어진 Size가 기기에서 지원하는지 먼저 확인.
+        if (isSizeSupported(mediaCodec, mime, preferredResolution))
+            return preferredResolution;
+
+        int pix = preferredResolution.getWidth() * preferredResolution.getHeight();
+        float preferredAspect = ((float) preferredResolution.getWidth()) / ((float) preferredResolution.getHeight());
+
+        List<Size> nearestToFurthest = new ArrayList<>();
+        nearestToFurthest.add(new Size(176, 144));
+        nearestToFurthest.add(new Size(320, 240));
+        nearestToFurthest.add(new Size(320, 180));
+        nearestToFurthest.add(new Size(640, 360));
+        nearestToFurthest.add(new Size(720, 480));
+        nearestToFurthest.add(new Size(1280, 720));
+        nearestToFurthest.add(new Size(1920, 1080));
+
+        Collections.sort(nearestToFurthest, (o1, o2) -> {
+            if (o1.getWidth() * o1.getHeight() == o2.getWidth() * o2.getWidth())
+                return 1;
+            else {
+                boolean aspect;
+            }
+            return 0;
+        });
+
+        Size result = null;
+        if (isSizeSupported(mediaCodec, mime, nearestToFurthest.get(0)))
+            result = nearestToFurthest.get(0);
+        if (result != null) return result;
+        else throw new RuntimeException("Couldn't find supported resolution");
+    }
+
     /**
      * Decodes the video stream, sending frames to the surface.
      * <p>
@@ -146,6 +188,7 @@ public class DecodingClass extends Activity {
     public void play() throws IOException {
         MediaExtractor extractor = null;
         MediaCodec decoder = null;
+        MediaCodec encoder = null;
 
         // The MediaExtractor error messages aren't very useful.  Check to see if the input
         // file exists so we can throw a better one if it's not there.
@@ -162,7 +205,11 @@ public class DecodingClass extends Activity {
             }
             extractor.selectTrack(trackIndex);
 
+            // Format 초기화.
             MediaFormat format = extractor.getTrackFormat(trackIndex);
+
+            Size inputSize = new Size(format.getInteger(MediaFormat.KEY_WIDTH), format.getInteger(MediaFormat.KEY_HEIGHT));
+            Size outputSize = getSupportedVideoSize(encoder, "video/avc", inputSize);
 
             // Create a MediaCodec decoder, and configure it with the MediaFormat from the
             // extractor.  It's very important to use the format from the extractor because
@@ -299,7 +346,8 @@ public class DecodingClass extends Activity {
                     // updates inputBuf's position, limit, etc.
                     int chunkSize = extractor.readSampleData(inputBuf, 0);
 
-                    if(once) {
+                    // -----------------------------------------------
+                    if (once) {
                         inputBuf.rewind();
                         byte[] payload = new byte[inputBuf.remaining()];
                         inputBuf.get(payload);
@@ -310,6 +358,7 @@ public class DecodingClass extends Activity {
                         }
                         once = false;
                     }
+                    // -----------------------------------------------
 
                     //Log.i(TAG, )
                     if (chunkSize < 0) {
@@ -358,7 +407,7 @@ public class DecodingClass extends Activity {
                         // Log the delay from the first buffer of input to the first buffer
                         // of output.
                         long nowNsec = System.nanoTime();
-                        Log.d(TAG, "startup lag " + ((nowNsec-firstInputTimeNsec) / 1000000.0) + " ms");
+                        Log.d(TAG, "startup lag " + ((nowNsec - firstInputTimeNsec) / 1000000.0) + " ms");
                         firstInputTimeNsec = 0;
                     }
                     boolean doLoop = false;
@@ -422,7 +471,7 @@ public class DecodingClass extends Activity {
         /**
          * Prepares new PlayTask.
          *
-         * @param player The player object, configured with control and output.
+         * @param player   The player object, configured with control and output.
          * @param feedback UI feedback object.
          */
         public PlayTask(DecodingClass player, PlayerFeedback feedback) {

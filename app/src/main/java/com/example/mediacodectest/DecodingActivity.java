@@ -42,7 +42,9 @@ public class DecodingActivity extends AppCompatActivity {
 
         runBtn = findViewById(R.id.runBtn);
 
-        selectedFile = getIntent().getData();
+        // 메인 액티비티에서 선택한 파일의 Uri를 받을 때, getParcelableExtra 메소드 사용 필수.
+        selectedFile = getIntent().getParcelableExtra("file");
+
         try {
             fileFromUri = getFile(getApplicationContext(), selectedFile);
             Log.i(TAG, "fileFromUri info: "+fileFromUri.toString());
@@ -64,6 +66,10 @@ public class DecodingActivity extends AppCompatActivity {
             Thread thread = new Thread(decodeThread);
             thread.start();
         });
+    }
+
+    private void setFormat(File videoFile){
+
     }
 
     // https://stackoverflow.com/questions/65447194/how-to-convert-uri-to-file-android-10
