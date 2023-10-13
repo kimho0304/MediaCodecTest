@@ -15,7 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = MainActivity.class.getSimpleName();
+    public static final String TAG = "MainActivity_Debug";
     public Uri selectedFile;
     public File file;
     private static final int REQ_CODE = 123; // startActivityForResult에 쓰일 사용자 정의 요청 코드

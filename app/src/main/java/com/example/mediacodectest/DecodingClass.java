@@ -2,7 +2,6 @@ package com.example.mediacodectest;
 
 import android.app.Activity;
 import android.media.MediaCodec;
-import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Handler;
@@ -16,11 +15,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class DecodingClass extends Activity {
-    private static final String TAG = DecodingClass.class.getSimpleName();
+    private static final String TAG = "DecodingClass_Debug";
     private static final boolean VERBOSE = false;
 
     // Declare this here to reduce allocations.
@@ -35,6 +33,8 @@ public class DecodingClass extends Activity {
     private boolean mLoop;
     private int mVideoWidth;
     private int mVideoHeight;
+
+    private TransInfo mTransInfo;
 
     /**
      * Interface to be implemented by class that manages playback UI.
@@ -209,15 +209,21 @@ public class DecodingClass extends Activity {
 
             // Format 초기화.
             MediaFormat format = extractor.getTrackFormat(trackIndex);
-            MediaFormat outFormat = extractor.getTrackFormat(trackIndex);
+            // MediaFormat outFormat = extractor.getTrackFormat(trackIndex);
 
             // Create a MediaCodec decoder, and configure it with the MediaFormat from the
             // extractor.  It's very important to use the format from the extractor because
             // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
             String mime = format.getString(MediaFormat.KEY_MIME);
 
-            Size inputSize = new Size(format.getInteger(MediaFormat.KEY_WIDTH), format.getInteger(MediaFormat.KEY_HEIGHT));
-            Size outputSize = getSupportedVideoSize(encoder, mime, inputSize);
+            decoder = MediaCodec.createDecoderByType(mime);
+            decoder.configure(format, mOutputSurface, null, 0);
+            decoder.start();
+
+            doExtract(extractor, trackIndex, decoder, mFrameCallback);
+
+            /*Size inputSize = new Size(format.getInteger(MediaFormat.KEY_WIDTH), format.getInteger(MediaFormat.KEY_HEIGHT));
+            Size outputSize = getSupportedVideoSize(decoder, mime, inputSize);
 
             try {
                 outFormat = MediaFormat.createVideoFormat(mime, outputSize.getWidth(), outputSize.getHeight());
@@ -245,13 +251,8 @@ public class DecodingClass extends Activity {
                 // 따라서, -1로 OutputFormat 를 생성하고 다시 configure를 시도한다.
                 outFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, -1);
                 encoder.configure(outFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-            }
+            }*/
 
-            decoder = MediaCodec.createDecoderByType(mime);
-            decoder.configure(format, mOutputSurface, null, 0);
-            decoder.start();
-
-            doExtract(extractor, trackIndex, decoder, mFrameCallback);
         } finally {
             // release everything we grabbed
             if (decoder != null) {
@@ -263,11 +264,11 @@ public class DecodingClass extends Activity {
                 extractor.release();
                 extractor = null;
             }
-            if (encoder != null) {
+            /*if (encoder != null) {
                 encoder.stop();
                 encoder.release();
                 encoder = null;
-            }
+            }*/
         }
     }
 
@@ -384,15 +385,17 @@ public class DecodingClass extends Activity {
                     int chunkSize = extractor.readSampleData(inputBuf, 0);
 
                     // -----------------------------------------------
-                    if (once) {
+                     if (true) {
                         inputBuf.rewind();
                         byte[] payload = new byte[inputBuf.remaining()];
                         inputBuf.get(payload);
+                        TransInfo.setPayloads(payload);
 
                         int l = payload.length;
-                        for (int i = 0; i < l; i++) {
+                       /* for (int i = 0; i < l; i++) {
                             Log.i(TAG, i + "번 째: " + Integer.toString(payload[i]));
-                        }
+                        }*/
+                         Log.i("DecodingClass_Payload", "The length of current payload as bytes buffer: " + String.valueOf(l));
                         once = false;
                     }
                     // -----------------------------------------------
@@ -434,6 +437,7 @@ public class DecodingClass extends Activity {
                     if (VERBOSE) Log.d(TAG, "decoder output buffers changed");
                 } else if (decoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     MediaFormat newFormat = decoder.getOutputFormat();
+                    Log.d(TAG, "decoder output format: " + newFormat);
                     if (VERBOSE) Log.d(TAG, "decoder output format changed: " + newFormat);
                 } else if (decoderStatus < 0) {
                     throw new RuntimeException(

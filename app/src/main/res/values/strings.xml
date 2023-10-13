@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">MediaCodecTest</string>
+    <string name="loopPlayback_checkbox">Loop playback</string>
 </resources>

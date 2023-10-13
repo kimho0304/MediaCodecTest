@@ -10,6 +10,8 @@ import android.media.MediaMuxer;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Surface;
+import android.view.TextureView;
+import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -34,6 +36,8 @@ public class EncodingActivity extends AppCompatActivity {
     private MediaFormat outputVideoFormat;
 
 
+    private TextureView mTextureView;
+    private Button playBtn;
     MediaExtractor videoExtractor = null;
     MediaExtractor audioExtractor = null;
     OutputSurface outputSurface = null;
@@ -46,6 +50,11 @@ public class EncodingActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_encoding);
+
+        playBtn = findViewById(R.id.playBtn);
+
+        mTextureView = findViewById(R.id.playView);
 
         MediaCodecInfo videoCodecInfo = selectCodec(OUTPUT_VIDEO_MIME_TYPE);
 
@@ -72,6 +81,18 @@ public class EncodingActivity extends AppCompatActivity {
         }
 
     }
+    private MediaCodec createVideoEncoder(
+            MediaCodecInfo codecInfo,
+            MediaFormat format,
+            AtomicReference<Surface> surfaceReference)
+            throws IOException {
+        MediaCodec encoder = MediaCodec.createByCodecName(codecInfo.getName());
+        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        // Must be called before start() is.
+        surfaceReference.set(encoder.createInputSurface());
+        encoder.start();
+        return encoder;
+    }
 
     /**
      * Returns the first codec capable of encoding the specified MIME type, or null if no match was
@@ -92,18 +113,5 @@ public class EncodingActivity extends AppCompatActivity {
             }
         }
         return null;
-    }
-
-    private MediaCodec createVideoEncoder(
-            MediaCodecInfo codecInfo,
-            MediaFormat format,
-            AtomicReference<Surface> surfaceReference)
-            throws IOException {
-        MediaCodec encoder = MediaCodec.createByCodecName(codecInfo.getName());
-        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-        // Must be called before start() is.
-        surfaceReference.set(encoder.createInputSurface());
-        encoder.start();
-        return encoder;
     }
 }

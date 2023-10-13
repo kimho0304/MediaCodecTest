@@ -18,14 +18,50 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:gravity="center">
+        android:gravity="center"
+        android:background="@color/cardview_dark_background">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp"
+            android:gravity="center">
 
-        <Button
-            android:id="@+id/runBtn"
+            <Button
+                android:id="@+id/stopBtn"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="20dp"
+                android:layout_alignParentTop="true"
+                android:text="Play"
+                android:onClick="clickPlayStop" />
+
+            <Button
+                android:id="@+id/encodeBtn"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Encode" />
+
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/loopPlaybackCheckbox"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Run the Thread" />
+            android:layout_alignBaseline="@+id/locked60fps_checkbox"
+            android:layout_alignBottom="@+id/locked60fps_checkbox"
+            android:layout_toRightOf="@+id/locked60fps_checkbox"
+            android:text="@string/loopPlayback_checkbox" />
 
+        <TextureView
+            android:id="@+id/playView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignLeft="@+id/play_stop_button"
+            android:layout_below="@+id/locked60fps_checkbox"
+            android:layout_margin="20dp" />
 
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
