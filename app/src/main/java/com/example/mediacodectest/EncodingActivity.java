@@ -97,7 +97,7 @@ public class EncodingActivity extends AppCompatActivity {
         outputVideoFormat.setInteger(
                 MediaFormat.KEY_I_FRAME_INTERVAL, OUTPUT_VIDEO_IFRAME_INTERVAL);
 
-        if (VERBOSE) Log.d(TAG, "video format: " + outputVideoFormat);
+        Log.d(TAG, "video format: " + outputVideoFormat);
 
         // Create a MediaCodec for the desired codec, then configure it as an encoder with
         // our desired properties. Request a Surface to use for input.
@@ -177,6 +177,7 @@ public class EncodingActivity extends AppCompatActivity {
         for (byte[] frameData : TransInfo.getPaysArray()) {
             ByteBuffer buffer = ByteBuffer.wrap(frameData);
             bufferInfo = new MediaCodec.BufferInfo();
+            Log.d(TAG, "buffer info: " + frameData.length);
 
             presentationTimeUs = extractor.getSampleTime();
             bufferInfo.presentationTimeUs = presentationTimeUs; // Set presentation time
