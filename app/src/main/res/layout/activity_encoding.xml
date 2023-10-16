@@ -21,6 +21,15 @@
         android:orientation="vertical">
 
         <Button
+            android:id="@+id/loadBtn"
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="20dp"
+            android:text="Load payloads" />
+        <Button
             android:id="@+id/playBtn"
             style="?android:attr/buttonStyleSmall"
             android:layout_width="wrap_content"
@@ -30,12 +39,10 @@
             android:layout_marginTop="20dp"
             android:text="Play" />
 
-        <TextureView
+        <VideoView
             android:id="@+id/playView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/locked60fps_checkbox"
-            android:layout_alignLeft="@+id/play_stop_button"
             android:layout_margin="20dp" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -33,6 +33,7 @@ public class DecodingClass extends Activity {
     private boolean mLoop;
     private int mVideoWidth;
     private int mVideoHeight;
+    private byte[] payloads;
 
     private TransInfo mTransInfo;
 
@@ -101,6 +102,8 @@ public class DecodingClass extends Activity {
             extractor.selectTrack(trackIndex);
 
             MediaFormat format = extractor.getTrackFormat(trackIndex);
+            TransInfo.setFormat(format);
+            TransInfo.setExtractor(extractor);
             mVideoWidth = format.getInteger(MediaFormat.KEY_WIDTH);
             mVideoHeight = format.getInteger(MediaFormat.KEY_HEIGHT);
             if (VERBOSE) {
@@ -175,8 +178,8 @@ public class DecodingClass extends Activity {
         });*/
 
         Size result = null;
-        if (isSizeSupported(mediaCodec, mime, nearestToFurthest.get(0)))
-            result = nearestToFurthest.get(0);
+        /* if (isSizeSupported(mediaCodec, mime, nearestToFurthest.get(0)))
+            result = nearestToFurthest.get(0); */
         if (result != null) return result;
         else throw new RuntimeException("Couldn't find supported resolution");
     }
@@ -395,7 +398,7 @@ public class DecodingClass extends Activity {
                        /* for (int i = 0; i < l; i++) {
                             Log.i(TAG, i + "번 째: " + Integer.toString(payload[i]));
                         }*/
-                         Log.i("DecodingClass_Payload", "The length of current payload as bytes buffer: " + String.valueOf(l));
+                         Log.i("DecodingClass_Payload", "The length of current payload as bytes buffer: " + l);
                         once = false;
                     }
                     // -----------------------------------------------
@@ -489,6 +492,8 @@ public class DecodingClass extends Activity {
                 }
             }
         }
+        TransInfo.state = true;
+        Log.d(TAG+"_State", "STATE: " + TransInfo.state);
     }
 
     /**

@@ -36,7 +36,7 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
 
     // UI Initializaion ↓:
     private TextureView mTextureView;
-    private boolean mShowStopLabel;
+    private boolean mShowStopLabel = false;
     private DecodingClass.PlayTask mPlayTask;
     private boolean mSurfaceTextureReady = false;
 
@@ -44,6 +44,10 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
 
     public void onResume() {
         super.onResume();
+    }
+
+    public void onDestroy() {
+        super.onDestroy();
     }
 
     public void onPause() {
