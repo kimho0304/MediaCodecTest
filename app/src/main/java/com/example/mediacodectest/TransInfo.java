@@ -7,11 +7,11 @@ import java.util.ArrayList;
 
 public class TransInfo {
     private static MediaFormat format;
-    private static MediaExtractor extractor;
+    private static MediaExtractor extractor = new MediaExtractor();;
     private static byte[] payloads;
-    static boolean state = false;
+    private static boolean state = false;
     private static ArrayList<byte[]> paysBuffer = new ArrayList<>(0);
-    private static long presentationTimeUs;
+    private static ArrayList<Long> presentationTimeUs  = new ArrayList<>(0);;
     TransInfo(){
     }
     public static void setFormat(MediaFormat input){
@@ -28,9 +28,9 @@ public class TransInfo {
     }
 
     public static void setPresentationTimeUs(long input){
-        presentationTimeUs = input;
+        presentationTimeUs.add(input);
     }
-    public static long getPresentationTimeUs(){
+    public static ArrayList<Long> getPresentationTimeUs(){
         return presentationTimeUs;
     }
     public static void setPayloads(byte[] input){
@@ -46,8 +46,10 @@ public class TransInfo {
     public static ArrayList<byte[]> getPaysArray(){
         return paysBuffer;
     }
-
-    private static void accumulator(){
-
+    public static void setState(Boolean input){
+        state = input;
+    }
+    public static Boolean getState(){
+        return state;
     }
 }

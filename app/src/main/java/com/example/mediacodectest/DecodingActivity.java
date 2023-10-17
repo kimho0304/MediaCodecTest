@@ -40,7 +40,7 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
     private DecodingClass.PlayTask mPlayTask;
     private boolean mSurfaceTextureReady = false;
 
-    private Button encodeBtn;
+    private Button playBtn, encodeBtn;
 
     public void onResume() {
         super.onResume();
@@ -71,13 +71,19 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
         // 메인 액티비티에서 선택한 파일의 Uri를 받을 때, getParcelableExtra 메소드 사용 필수.
         selectedFile = getIntent().getParcelableExtra("file");
 
-        mTextureView = (TextureView) findViewById(R.id.playView);
+        mTextureView = findViewById(R.id.playView);
         mTextureView.setSurfaceTextureListener(this);
 
         encodeBtn = findViewById(R.id.encodeBtn);
+        encodeBtn.setEnabled(false);
         encodeBtn.setOnClickListener(view -> {
             Intent toEncode = new Intent(this, EncodingActivity.class);
             startActivity(toEncode);
+        });
+
+        playBtn = findViewById(R.id.playBtn);
+        playBtn.setOnClickListener(view->{
+            clickPlayStop();
         });
 
         try {
@@ -91,7 +97,7 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
         updateControls();
     }
 
-    public void clickPlayStop(@SuppressWarnings("unused") View unused) {
+    public void clickPlayStop() {
         if (mShowStopLabel) {
             Log.d(TAG, "stopping movie");
             stopPlayback();
@@ -165,7 +171,7 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
     }
 
     private void updateControls() {
-        Button play = (Button) findViewById(R.id.stopBtn);
+        Button play = findViewById(R.id.playBtn);
         if (mShowStopLabel) {
             play.setText("Stop");
         } else {
@@ -176,6 +182,7 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
         // We don't support changes mid-play, so dim these.
         CheckBox check = (CheckBox) findViewById(R.id.loopPlaybackCheckbox);
         check.setEnabled(!mShowStopLabel);
+        encodeBtn.setEnabled(TransInfo.getState());
     }
 
     @Override

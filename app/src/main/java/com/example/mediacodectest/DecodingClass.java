@@ -94,7 +94,7 @@ public class DecodingClass extends Activity {
         MediaExtractor extractor = null;
         try {
             extractor = new MediaExtractor();
-            extractor.setDataSource(sourceFile.toString());
+            extractor.setDataSource(sourceFile.getAbsolutePath());
             int trackIndex = selectTrack(extractor);
             if (trackIndex < 0) {
                 throw new RuntimeException("No video track found in " + mSourceFile);
@@ -212,6 +212,7 @@ public class DecodingClass extends Activity {
 
             // Format 초기화.
             MediaFormat format = extractor.getTrackFormat(trackIndex);
+            TransInfo.setFormat(format);
             // MediaFormat outFormat = extractor.getTrackFormat(trackIndex);
 
             // Create a MediaCodec decoder, and configure it with the MediaFormat from the
@@ -223,6 +224,7 @@ public class DecodingClass extends Activity {
             decoder.configure(format, mOutputSurface, null, 0);
             decoder.start();
 
+            TransInfo.setExtractor(extractor);
             doExtract(extractor, trackIndex, decoder, mFrameCallback);
 
             /*Size inputSize = new Size(format.getInteger(MediaFormat.KEY_WIDTH), format.getInteger(MediaFormat.KEY_HEIGHT));
@@ -386,9 +388,12 @@ public class DecodingClass extends Activity {
                     // Read the sample data into the ByteBuffer.  This neither respects nor
                     // updates inputBuf's position, limit, etc.
                     int chunkSize = extractor.readSampleData(inputBuf, 0);
-
+                    long presentationTimeUs;
                     // -----------------------------------------------
-                     if (true) {
+                    if (true) {
+                        presentationTimeUs = extractor.getSampleTime();
+                        TransInfo.setPresentationTimeUs(presentationTimeUs);
+
                         inputBuf.rewind();
                         byte[] payload = new byte[inputBuf.remaining()];
                         inputBuf.get(payload);
@@ -398,7 +403,7 @@ public class DecodingClass extends Activity {
                        /* for (int i = 0; i < l; i++) {
                             Log.i(TAG, i + "번 째: " + Integer.toString(payload[i]));
                         }*/
-                         Log.i("DecodingClass_Payload", "The length of current payload as bytes buffer: " + l);
+                        Log.i("DecodingClass_Payload", "Cur: " + inputChunk + 1 + ", len: " + l);
                         once = false;
                     }
                     // -----------------------------------------------
@@ -414,8 +419,9 @@ public class DecodingClass extends Activity {
                         if (extractor.getSampleTrackIndex() != trackIndex) {
                             Log.w(TAG, "WEIRD: got sample from track " +
                                     extractor.getSampleTrackIndex() + ", expected " + trackIndex);
-                        }
+                        }/*
                         long presentationTimeUs = extractor.getSampleTime();
+                        TransInfo.setPresentationTimeUs(presentationTimeUs);*/
                         decoder.queueInputBuffer(inputBufIndex, 0, chunkSize,
                                 presentationTimeUs, 0 /*flags*/);
                         if (VERBOSE) {
@@ -492,8 +498,8 @@ public class DecodingClass extends Activity {
                 }
             }
         }
-        TransInfo.state = true;
-        Log.d(TAG+"_State", "STATE: " + TransInfo.state);
+        TransInfo.setState(true);
+        Log.d(TAG + "_State", "STATE: " + TransInfo.getState());
     }
 
     /**

@@ -3,18 +3,17 @@ package com.example.mediacodectest;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
-import android.media.MediaCodecList;
 import android.media.MediaExtractor;
-import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.TextureView;
 import android.widget.Button;
-import android.widget.VideoView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.BufferedOutputStream;
@@ -23,9 +22,9 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.ArrayList;
 
-public class EncodingActivity extends AppCompatActivity {
+public class EncodingActivity extends AppCompatActivity  implements SurfaceHolder.Callback {
     private static final String TAG = "EncodingActivity_Debug";
     private static final boolean VERBOSE = false; // lots of logging
     // parameters for the video encoder
@@ -44,19 +43,11 @@ public class EncodingActivity extends AppCompatActivity {
      * Height of the output frames.
      */
     private int mHeight = -1;
-    private MediaFormat outputVideoFormat;
-    private VideoView videoView;
-
+    private SurfaceView surfaceView;
+    private SurfaceHolder surfaceHolder;
+    private MediaPlayer mediaPlayer;
     private TextureView mTextureView;
     private Button playBtn, loadBtn;
-    MediaExtractor videoExtractor = null;
-    MediaExtractor audioExtractor = null;
-    OutputSurface outputSurface = null;
-    MediaCodec videoDecoder = null;
-    MediaCodec audioDecoder = null;
-    MediaCodec videoEncoder = null;
-    MediaCodec audioEncoder = null;
-    MediaMuxer muxer = null;
     private File resultFile;
 
     @Override
@@ -64,13 +55,15 @@ public class EncodingActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_encoding);
 
-        videoView = findViewById(R.id.playView);
+        surfaceView = findViewById(R.id.playView);
+        surfaceHolder = surfaceView.getHolder();
+        surfaceHolder.addCallback(this);
         // 비디오 리스너 등록.
-        videoView.setOnPreparedListener(mp -> {
+        /* surfaceView.setOnPreparedListener(mp -> {
             // 준비 완료되면 비디오 재생.
             mp.setLooping(true); // 비디오 무한루프 설정: true.
             // mp.start(); // 비디오 재생 시작.
-        });
+        }); */
 
         loadBtn = findViewById(R.id.loadBtn);
         loadBtn.setOnClickListener(view->{
@@ -83,59 +76,35 @@ public class EncodingActivity extends AppCompatActivity {
 
         playBtn = findViewById(R.id.playBtn);
         playBtn.setOnClickListener(view->{
-            videoView.start();
+            playVideo();
         });
-
-        MediaCodecInfo videoCodecInfo = selectCodec(OUTPUT_VIDEO_MIME_TYPE);
-
-        outputVideoFormat =
-                MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE, mWidth, mHeight);
-        outputVideoFormat.setInteger(
-                MediaFormat.KEY_COLOR_FORMAT, OUTPUT_VIDEO_COLOR_FORMAT);
-        outputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_VIDEO_BIT_RATE);
-        outputVideoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, OUTPUT_VIDEO_FRAME_RATE);
-        outputVideoFormat.setInteger(
-                MediaFormat.KEY_I_FRAME_INTERVAL, OUTPUT_VIDEO_IFRAME_INTERVAL);
-
-        Log.d(TAG, "video format: " + outputVideoFormat);
-
-        // Create a MediaCodec for the desired codec, then configure it as an encoder with
-        // our desired properties. Request a Surface to use for input.
-        AtomicReference<Surface> inputSurfaceReference = new AtomicReference<Surface>();
     }
 
     private void playVideo(){
-        MediaPlayer mediaPlayer = new MediaPlayer();
-
+        mediaPlayer = new MediaPlayer();
         try {
             // Set the data source to the new video file
             mediaPlayer.setDataSource(resultFile.getAbsolutePath());
-
-            // Prepare and start playback
-            mediaPlayer.prepare();
+            Log.i(TAG, "setDataSource worked.");
+            mediaPlayer.setDisplay(surfaceHolder);
+            Log.i(TAG, "surfaceCreated worked.");
+            try {
+                mediaPlayer.prepare();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
             mediaPlayer.start();
-
-            // Set up event listeners (optional)
-            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mp) {
-                    // Handle playback completion
-                }
-            });
-
-            mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-                @Override
-                public boolean onError(MediaPlayer mp, int what, int extra) {
-                    // Handle playback error
-                    return false; // Return true if the error is handled
-                }
-            });
+            Log.i(TAG, "start worked.");
+            // Prepare and start playback
+            /*mediaPlayer.prepare();
+            mediaPlayer.start();*/
         } catch (IOException e) {
+            Log.e(TAG, "Failed to play the file: " + e);
             e.printStackTrace();
         }
 
 // Release the MediaPlayer when done
-        mediaPlayer.release();
+        // mediaPlayer.release();
     }
 
     private void createVideo() throws IOException {
@@ -173,59 +142,62 @@ public class EncodingActivity extends AppCompatActivity {
         MediaCodec.BufferInfo bufferInfo = null;
 
         // Loop through your video frame payloads and write them to the new file
+        ArrayList<byte[]> payloadsList = TransInfo.getPaysArray();
+        ArrayList<Long> presentationTimeUsList = TransInfo.getPresentationTimeUs();
+        int l = presentationTimeUsList.size();
+        byte[] frameData = null;
         long presentationTimeUs = 0;
-        for (byte[] frameData : TransInfo.getPaysArray()) {
+        Log.i(TAG, "payloads length: " + payloadsList.size() +", times length: "+presentationTimeUsList.size());
+
+        for (int i = 0; i < l; i++) {
+            frameData = payloadsList.get(i);
             ByteBuffer buffer = ByteBuffer.wrap(frameData);
             bufferInfo = new MediaCodec.BufferInfo();
             Log.d(TAG, "buffer info: " + frameData.length);
 
-            presentationTimeUs = extractor.getSampleTime();
+            presentationTimeUs = presentationTimeUsList.get(i);
             bufferInfo.presentationTimeUs = presentationTimeUs; // Set presentation time
             bufferInfo.flags = MediaCodec.BUFFER_FLAG_KEY_FRAME; // Set flags if needed
 
             // Write the video frame data to the muxer
             mediaMuxer.writeSampleData(videoTrackIndex, buffer, bufferInfo);
-
+            // extractor.advance();
             // Increment presentation time if necessary
             // presentationTimeUs += frameDurationUs; // Adjust frame duration as needed
         }
+        Log.i(TAG, "End of encoding.");
 
         // Stop and release the MediaMuxer
         mediaMuxer.stop();
         mediaMuxer.release();
 
         bufferOS.close();
+        extractor.release();
+        TransInfo.getExtractor().release();
 
-        videoView.setVideoPath(filePath);
+        // surfaceView.setVideoPath(filePath);
     }
 
-    private MediaCodec createVideoEncoder(MediaCodecInfo codecInfo, MediaFormat format, AtomicReference<Surface> surfaceReference) throws IOException {
-        MediaCodec encoder = MediaCodec.createByCodecName(codecInfo.getName());
-        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-        // Must be called before start() is.
-        surfaceReference.set(encoder.createInputSurface());
-        encoder.start();
-        return encoder;
-    }
-
-    /**
-     * Returns the first codec capable of encoding the specified MIME type, or null if no match was
-     * found.
-     */
-    private static MediaCodecInfo selectCodec(String mimeType) {
-        int numCodecs = MediaCodecList.getCodecCount();
-        for (int i = 0; i < numCodecs; i++) {
-            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
-            if (!codecInfo.isEncoder()) {
-                continue;
-            }
-            String[] types = codecInfo.getSupportedTypes();
-            for (int j = 0; j < types.length; j++) {
-                if (types[j].equalsIgnoreCase(mimeType)) {
-                    return codecInfo;
-                }
-            }
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        mediaPlayer.setDisplay(surfaceHolder);
+        Log.i(TAG, "surfaceCreated worked.");
+        try {
+            mediaPlayer.prepare();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        return null;
+        mediaPlayer.start();
+        Log.i(TAG, "start worked.");
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        Log.i(TAG, "surfaceChanged worked.");
+    }
+
+    @Override
+    public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+        Log.i(TAG, "surfaceDestroyed worked.");
     }
 }
