@@ -19,7 +19,7 @@ import java.util.List;
 
 public class DecodingClass extends Activity {
     private static final String TAG = "DecodingClass_Debug";
-    private static final boolean VERBOSE = false;
+    private static final boolean VERBOSE = true;
 
     // Declare this here to reduce allocations.
     private MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
@@ -84,6 +84,7 @@ public class DecodingClass extends Activity {
     public DecodingClass(File sourceFile, Surface outputSurface, FrameCallback frameCallback)
             throws IOException {
         mSourceFile = sourceFile;
+        Log.i("FuckYou", "src l: " + mSourceFile.length());
         mOutputSurface = outputSurface;
         mFrameCallback = frameCallback;
 
@@ -95,6 +96,7 @@ public class DecodingClass extends Activity {
         try {
             extractor = new MediaExtractor();
             extractor.setDataSource(sourceFile.getAbsolutePath());
+
             int trackIndex = selectTrack(extractor);
             if (trackIndex < 0) {
                 throw new RuntimeException("No video track found in " + mSourceFile);
@@ -102,7 +104,7 @@ public class DecodingClass extends Activity {
             extractor.selectTrack(trackIndex);
 
             MediaFormat format = extractor.getTrackFormat(trackIndex);
-            TransInfo.setFormat(format);
+
             TransInfo.setExtractor(extractor);
             mVideoWidth = format.getInteger(MediaFormat.KEY_WIDTH);
             mVideoHeight = format.getInteger(MediaFormat.KEY_HEIGHT);
@@ -193,7 +195,6 @@ public class DecodingClass extends Activity {
     public void play() throws IOException {
         MediaExtractor extractor = null;
         MediaCodec decoder = null;
-        MediaCodec encoder = null;
 
         // The MediaExtractor error messages aren't very useful.  Check to see if the input
         // file exists so we can throw a better one if it's not there.
@@ -205,16 +206,14 @@ public class DecodingClass extends Activity {
             extractor = new MediaExtractor();
             extractor.setDataSource(mSourceFile.toString());
             int trackIndex = selectTrack(extractor);
+            TransInfo.setTrackInx(trackIndex);
             if (trackIndex < 0) {
                 throw new RuntimeException("No video track found in " + mSourceFile);
             }
             extractor.selectTrack(trackIndex);
-
             // Format 초기화.
             MediaFormat format = extractor.getTrackFormat(trackIndex);
             TransInfo.setFormat(format);
-            // MediaFormat outFormat = extractor.getTrackFormat(trackIndex);
-
             // Create a MediaCodec decoder, and configure it with the MediaFormat from the
             // extractor.  It's very important to use the format from the extractor because
             // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
@@ -289,6 +288,9 @@ public class DecodingClass extends Activity {
             MediaFormat format = extractor.getTrackFormat(i);
             String mime = format.getString(MediaFormat.KEY_MIME);
             if (mime.startsWith("video/")) {
+                TransInfo.setFormat(format);
+                Log.i("TransInfoFormatComparison", String.valueOf((Boolean) (format.toString().equals(TransInfo.getFormat().toString()))));
+                // -> true.
                 if (VERBOSE) {
                     Log.d(TAG, "Extractor selected track " + i + " (" + mime + "): " + format);
                 }
@@ -369,14 +371,13 @@ public class DecodingClass extends Activity {
 
         boolean outputDone = false;
         boolean inputDone = false;
-        boolean once = true;
+
         while (!outputDone) {
             if (VERBOSE) Log.d(TAG, "loop");
             if (mIsStopRequested) {
                 Log.d(TAG, "Stop requested");
                 return;
             }
-
             // Feed more data to the decoder.
             if (!inputDone) {
                 int inputBufIndex = decoder.dequeueInputBuffer(TIMEOUT_USEC);
@@ -388,27 +389,10 @@ public class DecodingClass extends Activity {
                     // Read the sample data into the ByteBuffer.  This neither respects nor
                     // updates inputBuf's position, limit, etc.
                     int chunkSize = extractor.readSampleData(inputBuf, 0);
-                    long presentationTimeUs;
-                    // -----------------------------------------------
-                    if (true) {
-                        presentationTimeUs = extractor.getSampleTime();
-                        TransInfo.setPresentationTimeUs(presentationTimeUs);
+                    long presentationTimeUs = extractor.getSampleTime();
+                    int flag = extractor.getSampleFlags();
+                    TransInfo.setPresentationTimeUs(presentationTimeUs);
 
-                        inputBuf.rewind();
-                        byte[] payload = new byte[inputBuf.remaining()];
-                        inputBuf.get(payload);
-                        TransInfo.setPayloads(payload);
-
-                        int l = payload.length;
-                       /* for (int i = 0; i < l; i++) {
-                            Log.i(TAG, i + "번 째: " + Integer.toString(payload[i]));
-                        }*/
-                        Log.i("DecodingClass_Payload", "Cur: " + inputChunk + 1 + ", len: " + l);
-                        once = false;
-                    }
-                    // -----------------------------------------------
-
-                    //Log.i(TAG, )
                     if (chunkSize < 0) {
                         // End of stream -- send empty frame with EOS flag set.
                         decoder.queueInputBuffer(inputBufIndex, 0, 0, 0L,
@@ -416,14 +400,27 @@ public class DecodingClass extends Activity {
                         inputDone = true;
                         if (VERBOSE) Log.d(TAG, "sent input EOS");
                     } else {
-                        if (extractor.getSampleTrackIndex() != trackIndex) {
+                        if (extractor.getSampleTrackIndex() != trackIndex)
                             Log.w(TAG, "WEIRD: got sample from track " +
                                     extractor.getSampleTrackIndex() + ", expected " + trackIndex);
-                        }/*
-                        long presentationTimeUs = extractor.getSampleTime();
-                        TransInfo.setPresentationTimeUs(presentationTimeUs);*/
+
+
+                        inputBuf.rewind();
+                        byte[] payload = new byte[inputBuf.remaining()];
+                        inputBuf.get(payload);
+                        TransInfo.setPayloads(payload);
+
+                        int l = payload.length;
+
+                        if (chunkSize == -1) {
+                            for (int i = 0; i < 10; i++)
+                                Log.i("DecodingClass_Payload", "FUCK: " + payload[0]);
+                        }
+                        Log.i("DecodingClass_Payload", "Cur: " + (inputChunk + 1) + ", len: " + l);
+                        Log.i("DecodingClass_Payload", "ChunkSize: " + chunkSize);
+
                         decoder.queueInputBuffer(inputBufIndex, 0, chunkSize,
-                                presentationTimeUs, 0 /*flags*/);
+                                presentationTimeUs, flag /*flags*/);
                         if (VERBOSE) {
                             Log.d(TAG, "submitted frame " + inputChunk + " to dec, size=" +
                                     chunkSize);
@@ -446,7 +443,6 @@ public class DecodingClass extends Activity {
                     if (VERBOSE) Log.d(TAG, "decoder output buffers changed");
                 } else if (decoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     MediaFormat newFormat = decoder.getOutputFormat();
-                    Log.d(TAG, "decoder output format: " + newFormat);
                     if (VERBOSE) Log.d(TAG, "decoder output format changed: " + newFormat);
                 } else if (decoderStatus < 0) {
                     throw new RuntimeException(
@@ -498,6 +494,7 @@ public class DecodingClass extends Activity {
                 }
             }
         }
+        TransInfo.setExtractor(extractor);
         TransInfo.setState(true);
         Log.d(TAG + "_State", "STATE: " + TransInfo.getState());
     }

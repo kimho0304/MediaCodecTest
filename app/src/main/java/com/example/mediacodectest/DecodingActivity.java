@@ -70,21 +70,9 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
         setContentView(R.layout.activity_decoding);
         // 메인 액티비티에서 선택한 파일의 Uri를 받을 때, getParcelableExtra 메소드 사용 필수.
         selectedFile = getIntent().getParcelableExtra("file");
-
+        Log.i(TAG, selectedFile.toString());
         mTextureView = findViewById(R.id.playView);
         mTextureView.setSurfaceTextureListener(this);
-
-        encodeBtn = findViewById(R.id.encodeBtn);
-        encodeBtn.setEnabled(false);
-        encodeBtn.setOnClickListener(view -> {
-            Intent toEncode = new Intent(this, EncodingActivity.class);
-            startActivity(toEncode);
-        });
-
-        playBtn = findViewById(R.id.playBtn);
-        playBtn.setOnClickListener(view->{
-            clickPlayStop();
-        });
 
         try {
             fileFromUri = getFile(getApplicationContext(), selectedFile);
@@ -93,6 +81,20 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
             Log.e(TAG, "getFile() error.");
             e.printStackTrace();
         }
+
+        encodeBtn = findViewById(R.id.encodeBtn);
+        encodeBtn.setEnabled(false);
+        encodeBtn.setOnClickListener(view -> {
+            Intent toEncode = new Intent(this, EncodingActivity.class);
+            // toEncode.putExtra("file", selectedFile);
+            startActivity(toEncode);
+        });
+
+        playBtn = findViewById(R.id.playBtn);
+        playBtn.setOnClickListener(view->{
+            clickPlayStop();
+        });
+
 
         updateControls();
     }
