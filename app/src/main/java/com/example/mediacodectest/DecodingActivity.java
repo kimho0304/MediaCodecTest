@@ -128,14 +128,9 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
             Surface surface = new Surface(st);
             DecodingClass player;
 
-            try {
-                player = new DecodingClass(
-                        fileFromUri, surface, callback);
-            } catch (IOException ioe) {
-                Log.e(TAG, "Unable to play movie", ioe);
-                surface.release();
-                return;
-            }
+
+                player = new DecodingClass();
+
             // adjustAspectRatio(player.getVideoWidth(), player.getVideoHeight());
 
             mPlayTask = new DecodingClass.PlayTask(player, this);

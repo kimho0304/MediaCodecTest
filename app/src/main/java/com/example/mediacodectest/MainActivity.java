@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        Intent toDecodeActivity = new Intent(this, DecodingActivity.class);
+        Intent toDecodeActivity = new Intent(this, SampleActivity.class);
         toDecodeActivity.putExtra("file", selectedFile);
         startActivity(toDecodeActivity);
     }
