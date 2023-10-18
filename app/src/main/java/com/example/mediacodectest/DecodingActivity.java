@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
@@ -31,8 +32,6 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
     private static final String TAG = "DecodingActivity_Debug";
     private Uri selectedFile;
     private File fileFromUri;
-    private DecodingClass decodeObj;
-    private DecodingClass.FrameCallback mFrameCallBack;
 
     // UI Initializaion ↓:
     private TextureView mTextureView;
@@ -76,6 +75,14 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
 
         try {
             fileFromUri = getFile(getApplicationContext(), selectedFile);
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            mmr.setDataSource(fileFromUri.getAbsolutePath());
+
+            Log.i(TAG+"mmr", "BITRATE: "+mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
+            Log.i(TAG+"mmr", "BITS_PER_SAMPLE: "+mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE));
+            Log.i(TAG+"mmr", "VIDEO_FRAME_COUNT: "+mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
+            Log.i(TAG+"mmr", "KEY_NUM_TRACKS: "+mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_NUM_TRACKS));
+
             Log.i(TAG, "fileFromUri info: " + fileFromUri);
         } catch (IOException e) {
             Log.e(TAG, "getFile() error.");
@@ -94,7 +101,6 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
         playBtn.setOnClickListener(view->{
             clickPlayStop();
         });
-
 
         updateControls();
     }
@@ -120,7 +126,8 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
             }*/
             SurfaceTexture st = mTextureView.getSurfaceTexture();
             Surface surface = new Surface(st);
-            DecodingClass player = null;
+            DecodingClass player;
+
             try {
                 player = new DecodingClass(
                         fileFromUri, surface, callback);
@@ -182,7 +189,7 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
         play.setEnabled(mSurfaceTextureReady);
 
         // We don't support changes mid-play, so dim these.
-        CheckBox check = (CheckBox) findViewById(R.id.loopPlaybackCheckbox);
+        CheckBox check = findViewById(R.id.loopPlaybackCheckbox);
         check.setEnabled(!mShowStopLabel);
         encodeBtn.setEnabled(TransInfo.getState());
     }

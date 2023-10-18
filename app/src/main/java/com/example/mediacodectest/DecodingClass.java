@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -14,8 +15,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 public class DecodingClass extends Activity {
     private static final String TAG = "DecodingClass_Debug";
@@ -84,7 +83,6 @@ public class DecodingClass extends Activity {
     public DecodingClass(File sourceFile, Surface outputSurface, FrameCallback frameCallback)
             throws IOException {
         mSourceFile = sourceFile;
-        Log.i("FuckYou", "src l: " + mSourceFile.length());
         mOutputSurface = outputSurface;
         mFrameCallback = frameCallback;
 
@@ -97,15 +95,15 @@ public class DecodingClass extends Activity {
             extractor = new MediaExtractor();
             extractor.setDataSource(sourceFile.getAbsolutePath());
 
-            int trackIndex = selectTrack(extractor);
+            int trackIndex = selectVideoTrack(extractor);
             if (trackIndex < 0) {
                 throw new RuntimeException("No video track found in " + mSourceFile);
             }
             extractor.selectTrack(trackIndex);
 
             MediaFormat format = extractor.getTrackFormat(trackIndex);
-
             TransInfo.setExtractor(extractor);
+
             mVideoWidth = format.getInteger(MediaFormat.KEY_WIDTH);
             mVideoHeight = format.getInteger(MediaFormat.KEY_HEIGHT);
             if (VERBOSE) {
@@ -152,40 +150,6 @@ public class DecodingClass extends Activity {
         return mediaCodec.getCodecInfo().getCapabilitiesForType(mime).getVideoCapabilities().isSizeSupported(size.getWidth(), size.getHeight());
     }
 
-    public Size getSupportedVideoSize(MediaCodec mediaCodec, String mime, Size preferredResolution) {
-        // 주어진 Size가 기기에서 지원하는지 먼저 확인.
-        if (isSizeSupported(mediaCodec, mime, preferredResolution))
-            return preferredResolution;
-
-        int pix = preferredResolution.getWidth() * preferredResolution.getHeight();
-        float preferredAspect = ((float) preferredResolution.getWidth()) / ((float) preferredResolution.getHeight());
-
-        List<Size> nearestToFurthest = new ArrayList<>();
-        nearestToFurthest.add(new Size(176, 144));
-        nearestToFurthest.add(new Size(320, 240));
-        nearestToFurthest.add(new Size(320, 180));
-        nearestToFurthest.add(new Size(640, 360));
-        nearestToFurthest.add(new Size(720, 480));
-        nearestToFurthest.add(new Size(1280, 720));
-        nearestToFurthest.add(new Size(1920, 1080));
-
-       /* Collections.sort(nearestToFurthest, (o1, o2) -> {
-            if (o1.getWidth() * o1.getHeight() == o2.getWidth() * o2.getWidth())
-                return 1;
-            else {
-                boolean aspect;
-
-            }
-            return 0;
-        });*/
-
-        Size result = null;
-        /* if (isSizeSupported(mediaCodec, mime, nearestToFurthest.get(0)))
-            result = nearestToFurthest.get(0); */
-        if (result != null) return result;
-        else throw new RuntimeException("Couldn't find supported resolution");
-    }
-
     /**
      * Decodes the video stream, sending frames to the surface.
      * <p>
@@ -205,20 +169,40 @@ public class DecodingClass extends Activity {
         try {
             extractor = new MediaExtractor();
             extractor.setDataSource(mSourceFile.toString());
-            int trackIndex = selectTrack(extractor);
-            TransInfo.setTrackInx(trackIndex);
+            int trackIndex = selectVideoTrack(extractor);
+            //TransInfo.setTrackInx(trackIndex);
             if (trackIndex < 0) {
                 throw new RuntimeException("No video track found in " + mSourceFile);
             }
             extractor.selectTrack(trackIndex);
             // Format 초기화.
             MediaFormat format = extractor.getTrackFormat(trackIndex);
+
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            mmr.setDataSource(mSourceFile.getAbsolutePath());
+
             TransInfo.setFormat(format);
+            /*
+
+            Log.i(TAG+"mmr", "BITRATE: "+mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
+            Log.i(TAG+"mmr", "BITS_PER_SAMPLE: "+mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE));
+            Log.i(TAG+"mmr", "VIDEO_FRAME_COUNT: "+mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
+            Log.i(TAG+"mmr", "KEY_NUM_TRACKS: "+mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_NUM_TRACKS));
+             */
+                    /*Log.i(TAG + "format", "BITRATE: " + newFormat.getInteger(MediaFormat.KEY_BIT_RATE));
+                    Log.i(TAG + "format", "I_FRAME_INTERVAL: " + newFormat.getInteger(MediaFormat.KEY_I_FRAME_INTERVAL));
+                    Log.i(TAG + "format", "FRAME_RATE: " + newFormat.getInteger(MediaFormat.KEY_FRAME_RATE));
+                    Log.i(TAG + "format", "BITRATE_MODE: " + newFormat.getString(MediaFormat.KEY_BITRATE_MODE));
+                    Log.i(TAG + "format", "DURATION: " + newFormat.getInteger(MediaFormat.KEY_DURATION));
+                    Log.i(TAG + "format", "MIME: " + newFormat.getString(MediaFormat.KEY_MIME));
+                    Log.i(TAG + "format", "TRACK_ID: " + newFormat.getInteger(MediaFormat.KEY_TRACK_ID));
+                    Log.i(TAG + "format", "COLOR_FORMAT: " + newFormat.getString(MediaFormat.KEY_COLOR_FORMAT));*/
+
             // Create a MediaCodec decoder, and configure it with the MediaFormat from the
             // extractor.  It's very important to use the format from the extractor because
             // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
             String mime = format.getString(MediaFormat.KEY_MIME);
-
+            Log.i("mimetype", mime);
             decoder = MediaCodec.createDecoderByType(mime);
             decoder.configure(format, mOutputSurface, null, 0);
             decoder.start();
@@ -281,7 +265,7 @@ public class DecodingClass extends Activity {
      *
      * @return the track index, or -1 if no video track is found.
      */
-    private static int selectTrack(MediaExtractor extractor) {
+    private static int selectVideoTrack(MediaExtractor extractor) {
         // Select the first video track we find, ignore the rest.
         int numTracks = extractor.getTrackCount();
         for (int i = 0; i < numTracks; i++) {
@@ -293,6 +277,23 @@ public class DecodingClass extends Activity {
                 // -> true.
                 if (VERBOSE) {
                     Log.d(TAG, "Extractor selected track " + i + " (" + mime + "): " + format);
+                }
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int selectAudioTrack(MediaExtractor extractor) {
+        // Select the first video track we find, ignore the rest.
+        int numTracks = extractor.getTrackCount();
+        for (int i = 0; i < numTracks; i++) {
+            MediaFormat format = extractor.getTrackFormat(i);
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            if (mime.startsWith("audio/")) {
+                TransInfo.setFormat(format);
+                if (VERBOSE) {
+                    Log.d(TAG, "Extractor selected audio track " + i + " (" + mime + "): " + format);
                 }
                 return i;
             }
@@ -389,9 +390,27 @@ public class DecodingClass extends Activity {
                     // Read the sample data into the ByteBuffer.  This neither respects nor
                     // updates inputBuf's position, limit, etc.
                     int chunkSize = extractor.readSampleData(inputBuf, 0);
+                    int trackInx = extractor.getSampleTrackIndex();
+
                     long presentationTimeUs = extractor.getSampleTime();
                     int flag = extractor.getSampleFlags();
-                    TransInfo.setPresentationTimeUs(presentationTimeUs);
+                    TransInfo.setBufferInfo(presentationTimeUs, flag);
+                    TransInfo.setTrackInx(trackInx);
+                    //TransInfo.setPresentationTimeUs(presentationTimeUs);
+
+                    inputBuf.rewind();
+                    byte[] payload = new byte[inputBuf.remaining()];
+                    inputBuf.get(payload);
+                    TransInfo.setPayloads(payload);
+
+                    int l = payload.length;
+
+                    if (chunkSize == -1) {
+                        for (int i = 0; i < 10; i++)
+                            Log.i("DecodingClass_Payload", "EOS: " + payload[0]);
+                    }
+                    Log.i("DecodingClass_Payload", "Cur: " + (inputChunk + 1) + ", len: " + l);
+                    Log.i("DecodingClass_Payload", "ChunkSize: " + chunkSize);
 
                     if (chunkSize < 0) {
                         // End of stream -- send empty frame with EOS flag set.
@@ -404,20 +423,6 @@ public class DecodingClass extends Activity {
                             Log.w(TAG, "WEIRD: got sample from track " +
                                     extractor.getSampleTrackIndex() + ", expected " + trackIndex);
 
-
-                        inputBuf.rewind();
-                        byte[] payload = new byte[inputBuf.remaining()];
-                        inputBuf.get(payload);
-                        TransInfo.setPayloads(payload);
-
-                        int l = payload.length;
-
-                        if (chunkSize == -1) {
-                            for (int i = 0; i < 10; i++)
-                                Log.i("DecodingClass_Payload", "FUCK: " + payload[0]);
-                        }
-                        Log.i("DecodingClass_Payload", "Cur: " + (inputChunk + 1) + ", len: " + l);
-                        Log.i("DecodingClass_Payload", "ChunkSize: " + chunkSize);
 
                         decoder.queueInputBuffer(inputBufIndex, 0, chunkSize,
                                 presentationTimeUs, flag /*flags*/);
@@ -443,6 +448,14 @@ public class DecodingClass extends Activity {
                     if (VERBOSE) Log.d(TAG, "decoder output buffers changed");
                 } else if (decoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     MediaFormat newFormat = decoder.getOutputFormat();
+                    /*Log.i(TAG + "format", "BITRATE: " + newFormat.getInteger(MediaFormat.KEY_BIT_RATE));
+                    Log.i(TAG + "format", "I_FRAME_INTERVAL: " + newFormat.getInteger(MediaFormat.KEY_I_FRAME_INTERVAL));
+                    Log.i(TAG + "format", "FRAME_RATE: " + newFormat.getInteger(MediaFormat.KEY_FRAME_RATE));
+                    Log.i(TAG + "format", "BITRATE_MODE: " + newFormat.getString(MediaFormat.KEY_BITRATE_MODE));
+                    Log.i(TAG + "format", "DURATION: " + newFormat.getInteger(MediaFormat.KEY_DURATION));
+                    Log.i(TAG + "format", "MIME: " + newFormat.getString(MediaFormat.KEY_MIME));
+                    Log.i(TAG + "format", "TRACK_ID: " + newFormat.getInteger(MediaFormat.KEY_TRACK_ID));
+                    Log.i(TAG + "format", "COLOR_FORMAT: " + newFormat.getString(MediaFormat.KEY_COLOR_FORMAT));*/
                     if (VERBOSE) Log.d(TAG, "decoder output format changed: " + newFormat);
                 } else if (decoderStatus < 0) {
                     throw new RuntimeException(

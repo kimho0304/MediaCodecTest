@@ -7,9 +7,11 @@ import android.database.Cursor;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaMuxer;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.Log;
@@ -29,8 +31,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
-public class EncodingActivity extends AppCompatActivity  implements SurfaceHolder.Callback {
+public class EncodingActivity extends AppCompatActivity implements SurfaceHolder.Callback {
     private static final String TAG = "EncodingActivity_Debug";
     private static final boolean VERBOSE = true; // lots of logging
     // parameters for the video encoder
@@ -65,8 +68,8 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
         setContentView(R.layout.activity_encoding);
 
         /*tmpFile = getIntent().getParcelableExtra("file");
-        Log.i(TAG, tmpFile.toString());
-        videoView = findViewById(R.id.videoView);
+        Log.i(TAG, tmpFile.toString());*/
+        videoView = findViewById(R.id.playView);
         videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() { // 비디오 리스너 등록.
             @Override
             public void onPrepared(MediaPlayer mp) {
@@ -74,14 +77,14 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
                 mp.setLooping(true); // 비디오 무한루프 설정: true.
                 //mp.start(); // 비디오 재생 시작.
             }
-        });*/
+        });
 
         surfaceView = findViewById(R.id.playView);
         surfaceHolder = surfaceView.getHolder();
         surfaceHolder.addCallback(this);
 
         loadBtn = findViewById(R.id.loadBtn);
-        loadBtn.setOnClickListener(view->{
+        loadBtn.setOnClickListener(view -> {
             try {
                 createVideo();
             } catch (IOException e) {
@@ -90,20 +93,20 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
         });
 
         playBtn = findViewById(R.id.playBtn);
-        playBtn.setOnClickListener(view->{
+        playBtn.setOnClickListener(view -> {
             playVideo();
         });
     }
 
-    private void playVideo(){
+    private void playVideo() {
         try {
             // Set the data source to the new video file
             mediaPlayer = new MediaPlayer();
-          /*  File fuck = getFile(getApplicationContext(), tmpFile);
-            Log.i(TAG, fuck.toString());*/
-            //videoView.setVideoPath(resultFile.getAbsolutePath());
-            //videoView.start();
-            mediaPlayer.setDataSource(resultFile.getAbsolutePath());
+            //File fuck = getFile(getApplicationContext(), tmpFile);
+            //Log.i(TAG, fuck.toString());
+            videoView.setVideoPath(resultFile.getAbsolutePath());
+            videoView.start();
+            /*mediaPlayer.setDataSource(resultFile.getAbsolutePath());
             Log.i(TAG, "resultFile info: " + resultFile.getAbsolutePath());
 
             Log.i(TAG, "setDataSource() worked.");
@@ -121,7 +124,7 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
             // Prepare and start playback
             /*mediaPlayer.prepare();
             mediaPlayer.start();*/
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Failed to play the file: " + e);
             e.printStackTrace();
         }
@@ -148,7 +151,7 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
         /*
         . Muxer에는 그냥 저장하시면 의미 없습니다.
 
-            디코딩이 된 데이터는 NV21/I420의 색상값을 가지는 그냥 단순 데이터입니다. 압축된 데이터가 아니기에 Muxer에 저장할 수 없죠. 안드로이드의 Muxer에서는 MediaCodec Encoder 데이터를 가져와야 합니다.
+            ** 디코딩이 된 데이터는 NV21/I420의 색상값을 가지는 그냥 단순 데이터입니다. 압축된 데이터가 아니기에 Muxer에 저장할 수 없죠. 안드로이드의 Muxer에서는 MediaCodec Encoder 데이터를 가져와야 합니다. **
 
             그리고 다시...
 
@@ -168,15 +171,14 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
         encodingFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
 
 
+        //MediaCodec encoder = MediaCodec.createEncoderByType("video/raw");
+        //MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
 
-        MediaCodec encoder = MediaCodec.createEncoderByType("video/avc");
-        MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
+        //encoder.configure(encodingFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
-        encoder.configure(encodingFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        // outputSurface = encoder.createInputSurface();
 
-        outputSurface = encoder.createInputSurface();
-
-        encoder.start();
+        //encoder.start();
 
         /*int inputBufIndex = encoder.dequeueInputBuffer(10000);
         if (inputBufIndex >= 0) {
@@ -190,7 +192,7 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
             encoder.queueInputBuffer(inputBufIndex, 0, inputFrameSize, presentationTimeUs, 0);
         }*/
 
-        MediaMuxer mMuxer = new MediaMuxer(filePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+        /*MediaMuxer mMuxer = new MediaMuxer(filePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         Boolean mMuxerStarted = false;
         int mTrackIndex = -1;
         final int TIMEOUT_USEC = 10000;
@@ -269,54 +271,81 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
         encoder.release();
 
         mMuxer.stop();
-        mMuxer.release();
+        mMuxer.release();*/
         //--------------------------------------
 
+        MediaFormat mFormat = TransInfo.getFormat();
+
         // Create a MediaMuxer for the new video file
-        /*MediaMuxer mediaMuxer = new MediaMuxer(filePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+        MediaMuxer mediaMuxer = new MediaMuxer(filePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+
         //extractor.setDataSource(filePath);
         Log.d(TAG, "mediaMuxer: " + mediaMuxer);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Log.i(TAG + "format", "getFeatures: " +  mFormat.getFeatures().size());
+        }
+        /*Log.i(TAG + "format", "BITRATE: " + mFormat.getInteger(MediaFormat.KEY_BIT_RATE));
+        Log.i(TAG + "format", "I_FRAME_INTERVAL: " + mFormat.getInteger(MediaFormat.KEY_I_FRAME_INTERVAL));
+        Log.i(TAG + "format", "FRAME_RATE: " + mFormat.getInteger(MediaFormat.KEY_FRAME_RATE));
+        Log.i(TAG + "format", "BITRATE_MODE: " + mFormat.getString(MediaFormat.KEY_BITRATE_MODE));
+        Log.i(TAG + "format", "DURATION: " + mFormat.getInteger(MediaFormat.KEY_DURATION));
+        Log.i(TAG + "format", "MIME: " + mFormat.getString(MediaFormat.KEY_MIME));
+        Log.i(TAG + "format", "TRACK_ID: " + mFormat.getInteger(MediaFormat.KEY_TRACK_ID));
+        Log.i(TAG + "format", "COLOR_FORMAT: " + mFormat.getString(MediaFormat.KEY_COLOR_FORMAT));*/
+        // bufferOS.close();
 
         // Add the video track with the original MediaFormat
-        int videoTrackIndex = mediaMuxer.addTrack(originalFormat);
-        Log.d(TAG, "original format: " + originalFormat); // 정상.
+        int videoTrackIndex = mediaMuxer.addTrack(encodingFormat);
+        Log.d(TAG, "original format: " + originalFormat.getInteger(MediaFormat.KEY_WIDTH));
         Log.d(TAG, "videoTrackIndex: " + videoTrackIndex); // 정상.
 
         // Start the muxer
         mediaMuxer.start();
 
         // Loop through your video frame payloads and write them to the new file
-        ArrayList<byte[]> payloadsList = TransInfo.getPaysArray();
-        ArrayList<Long> presentationTimeUsList = TransInfo.getPresentationTimeUs();
-        int l = presentationTimeUsList.size(); // == payloadsList.size().
-        byte[] frameData = null;
-        Log.i(TAG, "payloads length: " + payloadsList.size() +", times length: "+presentationTimeUsList.size());
+        ArrayList<byte[]> decoderPayloads = TransInfo.getDecodeBytes();
+        //ArrayList<Long> presentationTimeUsList = TransInfo.getPresentationTimeUs();
+        ArrayList<MediaCodec.BufferInfo> decoderInfo = TransInfo.getBufferinfo();
+        ArrayList<Integer> decoderTracks = TransInfo.getTrackInx();
+        int l = decoderInfo.size(); // == decoderPayloads.size().
+        byte[] frameData;
+        Log.i(TAG, "payloads length: " + decoderPayloads.size() + ", bufferInfo length: " + decoderInfo.size() + ", trankInx length: " + decoderTracks.size());
         // -> same for length.
 
-        for (int i = 0; i < l-1; i++) {
-            frameData = payloadsList.get(i);
+        for (int i = 0; i < l - 1; i++) {
+            frameData = decoderPayloads.get(i);
             ByteBuffer buffer = ByteBuffer.wrap(frameData);
-            Log.d(TAG, "buffer info: " + frameData.length);
+            Log.d(TAG, "frameDataBuffer info: " + frameData.length);
+            Log.d(TAG, "decoderTracks info: " + decoderTracks.get(i));
+            Log.d(TAG, "decoderInfo presentationTimeUs info: " + decoderInfo.get(i).presentationTimeUs);
+            Log.d(TAG, "decoderInfo flags info: " + decoderInfo.get(i).flags);
 
-            MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-            bufferInfo.presentationTimeUs = presentationTimeUsList.get(i); // Set presentation time
-            bufferInfo.flags = MediaCodec.BUFFER_FLAG_KEY_FRAME; // Set flags if needed
+            // MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+            // bufferInfo.presentationTimeUs = presentationTimeUsList.get(i); // Set presentation time
+            // bufferInfo.flags = MediaCodec.BUFFER_FLAG_KEY_FRAME; // Set flags if needed
 
             // Write the video frame data to the muxer
-            mediaMuxer.writeSampleData(videoTrackIndex, buffer, bufferInfo);
+            mediaMuxer.writeSampleData(decoderTracks.get(i), buffer, decoderInfo.get(i));
         }
-        */
+
         Log.i(TAG, "End of encoding.");
+        Log.i(TAG, "mux info: " + mediaMuxer);
         Log.i(TAG, "New video size: " + resultFile.length());
         Log.i(TAG, "New video info: " + resultFile.canExecute());
 
         // Stop and release the MediaMuxer
-        //mediaMuxer.stop();
-        //mediaMuxer.release();
+        mediaMuxer.stop();
+        mediaMuxer.release();
 
-        // bufferOS.close();
-        //extractor.release();
-        //TransInfo.getExtractor().release();
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        mmr.setDataSource(resultFile.getAbsolutePath());
+       /* Log.i(TAG + "mmr", "BITRATE: " + mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
+        Log.i(TAG + "mmr", "BITS_PER_SAMPLE: " + mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE));
+        Log.i(TAG + "mmr", "VIDEO_FRAME_COUNT: " + mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
+        Log.i(TAG + "mmr", "KEY_NUM_TRACKS: " + mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_NUM_TRACKS));
+        */// bufferOS.close();
+        // extractor.release();
+        TransInfo.getExtractor().release();
 
         // surfaceView.setVideoPath(filePath);
     }

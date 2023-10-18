@@ -39,10 +39,10 @@
             android:layout_marginTop="20dp"
             android:text="Play" />
 
-        <SurfaceView
+        <VideoView
             android:id="@+id/playView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_width="720px"
+            android:layout_height="1280px"
             android:layout_margin="20dp" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
