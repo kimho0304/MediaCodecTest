@@ -3,12 +3,14 @@ package com.example.mediacodectest;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
+import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.Log;
-import android.view.TextureView;
 import android.widget.Button;
+import android.widget.VideoView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -23,7 +25,7 @@ public class SampleActivity extends AppCompatActivity {
     private Uri selectedFile;
     private File fileFromUri;
     private Button runBtn;
-    private TextureView textureView;
+    private VideoView textureView;
     private String pathToReEncodedFile;
 
     @Override
@@ -36,8 +38,12 @@ public class SampleActivity extends AppCompatActivity {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        textureView = findViewById(R.id.textureView);
+
         runBtn = findViewById(R.id.runBtn);
         runBtn.setOnClickListener(view -> {
+
 
             try {
                 DecodingClass.mSourceFile = fileFromUri;
@@ -48,11 +54,28 @@ public class SampleActivity extends AppCompatActivity {
             } catch (Throwable e) {
                 throw new RuntimeException(e);
             }
-            /* smth wrong :( */
+
+            File file = new File(pathToReEncodedFile);
+
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            mmr.setDataSource(file.getAbsolutePath());
+
+            Log.i(TAG, mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
+            Log.i(TAG, mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO));
+            Log.i(TAG, mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE));
+            textureView.setVideoPath(file.getAbsolutePath());
+            textureView.start();
+            textureView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() { // 비디오 리스너 등록.
+                @Override
+                public void onPrepared(MediaPlayer mp) {
+                    // 준비 완료되면 비디오 재생.
+                    mp.setLooping(true); // 비디오 무한루프 설정: true.
+                    mp.start(); // 비디오 재생 시작.
+                }
+            });
         });
 
 
-        textureView = findViewById(R.id.textureView);
 
     }
 
