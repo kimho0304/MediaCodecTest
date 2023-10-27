@@ -7,7 +7,6 @@ import android.database.Cursor;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
-import android.media.MediaMuxer;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
@@ -28,7 +27,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public class EncodingActivity extends AppCompatActivity  implements SurfaceHolder.Callback {
     private static final String TAG = "EncodingActivity_Debug";
@@ -64,7 +62,8 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_encoding);
 
-        /*tmpFile = getIntent().getParcelableExtra("file");
+        /*
+        tmpFile = getIntent().getParcelableExtra("file");
         Log.i(TAG, tmpFile.toString());
         videoView = findViewById(R.id.videoView);
         videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() { // 비디오 리스너 등록.
@@ -85,14 +84,12 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
             try {
                 createVideo();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
         });
 
         playBtn = findViewById(R.id.playBtn);
-        playBtn.setOnClickListener(view->{
-            playVideo();
-        });
+        playBtn.setOnClickListener(view-> playVideo());
     }
 
     private void playVideo(){
@@ -174,102 +171,17 @@ public class EncodingActivity extends AppCompatActivity  implements SurfaceHolde
 
         encoder.configure(encodingFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
-        outputSurface = encoder.createInputSurface();
+        //outputSurface = encoder.createInputSurface();
 
         encoder.start();
 
-        /*int inputBufIndex = encoder.dequeueInputBuffer(10000);
-        if (inputBufIndex >= 0) {
-            ByteBuffer inputBuffer = encoder.getInputBuffer(inputBufIndex);
 
-            // Fill the inputBuffer with your raw video frame data
-            // You may need to convert YUV to the encoder's input format
 
-            long presentationTimeUs = calculatePresentationTimeUs(); // Set the presentation timestamp
 
-            encoder.queueInputBuffer(inputBufIndex, 0, inputFrameSize, presentationTimeUs, 0);
-        }*/
 
-        MediaMuxer mMuxer = new MediaMuxer(filePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
-        Boolean mMuxerStarted = false;
-        int mTrackIndex = -1;
-        final int TIMEOUT_USEC = 10000;
-        ByteBuffer[] encoderOutputBuffers = encoder.getOutputBuffers();
-        //mMuxer.start();
-        int cnt = 0;
-        mTrackIndex = mMuxer.addTrack(encodingFormat);
-        while (true) {
-            int encoderStatus = encoder.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
-            if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                Log.w(TAG, "AGAIN SIGNAL");
-            } else if (encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                Log.w(TAG, "BUFFERS_CHANGED");
-                // not expected for an encoder
-                encoderOutputBuffers = encoder.getOutputBuffers();
-            } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                // should happen before receiving buffers, and should only happen once
-                if (mMuxerStarted) {
-                    throw new RuntimeException("format changed twice");
-                }
-                MediaFormat newFormat = encoder.getOutputFormat();
-                Log.d(TAG, "encoder output format changed: " + newFormat);
 
-                // now that we have the Magic Goodies, start the muxer
-                mTrackIndex = mMuxer.addTrack(newFormat);
-                mMuxer.start();
-                mMuxerStarted = true;
-            } else if (encoderStatus < 0) {
-                Log.w(TAG, "unexpected result from encoder.dequeueOutputBuffer: " +
-                        encoderStatus);
-                // let's ignore it
-            } else {
-                cnt++;
-                ByteBuffer encodedData = encoderOutputBuffers[encoderStatus];
-                if (encodedData == null) {
-                    throw new RuntimeException("encoderOutputBuffer " + encoderStatus +
-                            " was null");
-                }
 
-                if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                    // The codec config data was pulled out and fed to the muxer when we got
-                    // the INFO_OUTPUT_FORMAT_CHANGED status.  Ignore it.
-                    if (VERBOSE) Log.d(TAG, "ignoring BUFFER_FLAG_CODEC_CONFIG");
-                    mBufferInfo.size = 0;
-                }
 
-                if (mBufferInfo.size != 0) {
-                    if (!mMuxerStarted)
-                        throw new RuntimeException("muxer hasn't started");
-
-                    // adjust the ByteBuffer values to match BufferInfo (not needed?)
-                    encodedData.position(mBufferInfo.offset);
-                    encodedData.limit(mBufferInfo.offset + mBufferInfo.size);
-                    byte[] data = new byte[encodedData.remaining()];
-                    ByteBuffer tmp = ByteBuffer.wrap(data);
-                    Log.i(TAG, "encode bytes info: " + cnt + "th, " + data.length);
-                    encodedData.get(data);
-                    TransInfo.setEncodeBytes(data);
-
-                    mMuxer.writeSampleData(mTrackIndex, tmp, mBufferInfo);
-                    if (VERBOSE)
-                        Log.d(TAG, "sent " + mBufferInfo.size + " bytes to muxer, ts=" +
-                                mBufferInfo.presentationTimeUs);
-
-                }
-
-                encoder.releaseOutputBuffer(encoderStatus, false);
-
-                if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                    break;      // out of while
-                }
-            }
-        }
-
-        encoder.stop();
-        encoder.release();
-
-        mMuxer.stop();
-        mMuxer.release();
         //--------------------------------------
 
         // Create a MediaMuxer for the new video file

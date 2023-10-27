@@ -29,10 +29,12 @@ android {
 }
 
 dependencies {
-
+    //implementation group: 'org.bytedeco', name: 'javacv-platform', version: '1.5.9'
     implementation libs.appcompat
     implementation libs.material
     implementation libs.constraintlayout
+    implementation 'junit:junit:4.12'
+    // implementation project(':javacv')
     testImplementation libs.junit
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.espresso.core

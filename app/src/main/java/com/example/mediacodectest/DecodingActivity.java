@@ -4,6 +4,8 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.net.Uri;
@@ -20,6 +22,7 @@ import android.widget.CheckBox;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -35,10 +38,13 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
     private DecodingClass.FrameCallback mFrameCallBack;
 
     // UI Initializaion ↓:
-    private TextureView mTextureView;
+    private TextureView mTextureView; private BitmapCanvas mTextureView2;
+    private static int decodeCount = 0;
     private boolean mShowStopLabel = false;
     private DecodingClass.PlayTask mPlayTask;
     private boolean mSurfaceTextureReady = false;
+    private SurfaceTexture st2;
+    private Surface surface = null;
 
     private Button playBtn, encodeBtn;
 
@@ -73,6 +79,20 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
         Log.i(TAG, selectedFile.toString());
         mTextureView = findViewById(R.id.playView);
         mTextureView.setSurfaceTextureListener(this);
+        // SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
+        /* surfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+            @Override
+            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+                // Frame is available, you can extract and process it here.
+                // Convert it to an image or video frame and send it to the server.
+                Log.i(TAG, "tx: " + surfaceTexture.getTimestamp());
+            }
+        });*/
+
+        mTextureView2 = new BitmapCanvas(getApplicationContext());
+        mTextureView2 = findViewById(R.id.playView2);
+        //mTextureView2.setSurfaceTextureListener(this);
+
 
         try {
             fileFromUri = getFile(getApplicationContext(), selectedFile);
@@ -93,11 +113,18 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
         playBtn = findViewById(R.id.playBtn);
         playBtn.setOnClickListener(view->{
             clickPlayStop();
+            //extractBitmaps();
         });
 
 
-        updateControls();
+        //updateControls();
     }
+
+    private void extractBitmaps(){
+
+    }
+
+
 
     public void clickPlayStop() {
         if (mShowStopLabel) {
@@ -119,7 +146,7 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
                 callback.setFixedPlaybackRate(60);
             }*/
             SurfaceTexture st = mTextureView.getSurfaceTexture();
-            Surface surface = new Surface(st);
+            surface = new Surface(st);
             DecodingClass player = null;
             try {
                 player = new DecodingClass(
@@ -210,7 +237,34 @@ public class DecodingActivity extends AppCompatActivity implements AdapterView.O
 
     @Override
     public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {
+        Bitmap tmp =  mTextureView.getBitmap();
+        BitmapCanvas.resultBitmap = tmp;
+        mTextureView2.draw(new Canvas(tmp));
+        BufferedOutputStream bos = null;
 
+        File outputFile = null;
+        try {
+            outputFile = File.createTempFile("bitmap"+ decodeCount, ".png");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Log.d(TAG, "SurfaceTexture updated: " + (++decodeCount));
+
+        try {
+            bos = new BufferedOutputStream(new FileOutputStream(outputFile));
+            tmp.compress(Bitmap.CompressFormat.PNG, 90, bos);
+            bos.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (bos != null) {
+                try {
+                    bos.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 
     @Override

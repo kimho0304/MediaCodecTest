@@ -27,6 +27,10 @@
             android:layout_height="wrap_content"
             android:text="Select a video" />
 
+        <TextureView
+            android:id="@+id/surface"
+            android:layout_width="720px"
+            android:layout_height="1280px"/>
 
     </LinearLayout>
 

@@ -365,7 +365,6 @@ public class DecodingClass extends Activity {
         // in logcat.  Use "logcat -v threadtime" to see sub-second timing.
 
         final int TIMEOUT_USEC = 10000;
-        ByteBuffer[] decoderInputBuffers = decoder.getInputBuffers();
         int inputChunk = 0;
         long firstInputTimeNsec = -1;
 
@@ -385,7 +384,7 @@ public class DecodingClass extends Activity {
                     if (firstInputTimeNsec == -1) {
                         firstInputTimeNsec = System.nanoTime();
                     }
-                    ByteBuffer inputBuf = decoderInputBuffers[inputBufIndex];
+                    ByteBuffer inputBuf =  decoder.getInputBuffer(inputBufIndex);
                     // Read the sample data into the ByteBuffer.  This neither respects nor
                     // updates inputBuf's position, limit, etc.
                     int chunkSize = extractor.readSampleData(inputBuf, 0);
